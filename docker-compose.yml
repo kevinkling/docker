@@ -1,0 +1,113 @@
+# TODAS LAS CREEDENCIALES PARA LOGEAR
+# user: kevin                   user: kevin
+# pass: 'nombre del servicio'   pass: pihole
+
+version: '3.4'
+
+services:
+  
+  homer:
+    image: b4bz/homer
+    container_name: homer
+    ports:
+      - 8888:8080
+    volumes:
+      - '$HOME/Docker/homer/assets/:/www/assets'
+    restart: unless-stopped
+
+
+  jdownloader-2:
+    image: jlesage/jdownloader-2
+    container_name: jdownloader
+    ports:
+      - 5800:5800
+    volumes:
+      - '$HOME/Docker/jdownloader/config:/config:rw'
+      - '$HOME/Docker/vsftpd/dwJDownloader:/output:rw'
+    restart: always
+
+
+  netdata: #Graficas que monitorea el server
+    image: netdata/netdata
+    container_name: netdata
+    ports:
+      - 19999:19999
+    volumes:
+      - '/etc/passwd:/host/etc/passwd:ro'
+      - '/etc/group:/host/etc/group:ro'
+      - '/proc:/host/proc:ro'
+      - '/sys:/host/sys:ro'
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - '$HOME/Docker/netdata/netdata-etc:/etc/netdata'
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor=unconfined
+    restart: unless-stopped
+
+  #user: admin
+  #pass: portainer
+  portainer: #Gestor de container web
+    container_name: portainer
+    image: portainer/portainer:alpine
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - '/home/kevin/Docker/portainer:/data'
+    ports:
+      - 9000:9000
+    restart: always
+    
+  pihole: #Bloqueador de ads
+    container_name: pihole
+    image: thenetworkchuck/networkchuck_pihole
+    environment:
+      TZ: 'America/Argentina/Buenos_Aires'
+      WEBPASSWORD: 'pihole'
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      - 89:80
+      - 443:443
+      - 8080:8080
+    volumes:
+      - './pihole_networkchuck/etc-pihole/:/etc/pihole/'
+      - './pihole_networkchuck/etc-dnsmasq.d/:/etc/dnsmasq.d/'
+    dns:
+      - 127.0.0.1
+      - 1.1.1.1
+    cap_add:
+      - NET_ADMIN
+    restart: always
+
+  transmission: #Gestor de torrents
+    container_name: transmission
+    image: lscr.io/linuxserver/transmission
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TRANSMISSION_WEB_HOME=/combustion-release/ #optional
+      - USER=kevin
+      - PASS=transmission
+    volumes:
+      - '/home/kevin/Docker/transmission/config:/config'
+      - '/home/kevin/Docker/transmission/downloads:/downloads'
+      - '/home/kevin/Docker/transmission/watch:/watch'
+    ports:
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
+    restart: unless-stopped
+
+
+  vsftpd: #Servidor FTP
+    container_name: vsftpd
+    image: panubo/vsftpd
+    environment:
+      - FTP_USER=kevin
+      - FTP_PASSWORD=vsftpd
+    volumes:
+      - '/home/kevin/Docker/vsftpd:/srv'
+    expose:
+      - 21
+    network_mode: host
+
